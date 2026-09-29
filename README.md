@@ -539,16 +539,27 @@ Prints em `docs/screenshots/`, capturados em aparelho Android com o development 
 |---|---|---|
 | ![](docs/screenshots/login.png) | ![](docs/screenshots/cadastro.png) | ![](docs/screenshots/usuarios.png) |
 
-| Grupo (limite atingido) | Perfil | Conversas (estado vazio) |
+| Conversas | Conversas (estado vazio) | Perfil |
 |---|---|---|
-| ![](docs/screenshots/grupo.png) | ![](docs/screenshots/perfil.png) | ![](docs/screenshots/conversas-vazio.png) |
+| ![](docs/screenshots/conversas.png) | ![](docs/screenshots/conversas-vazio.png) | ![](docs/screenshots/perfil.png) |
 
-| Chat individual em tempo real |
+| Criação de grupo | Integrantes | Chat em grupo |
+|---|---|---|
+| ![](docs/screenshots/grupo.png) | ![](docs/screenshots/integrantes.png) | ![](docs/screenshots/chat-grupo.png) |
+
+| Chat individual |
 |---|
 | ![](docs/screenshots/chat-direto.png) |
 
-O print do grupo mostra o contador em **"4 de 4 · sem vagas"** com o aviso de capacidade esgotada;
-o do chat individual mostra a mensagem recebida sem recarregar a tela.
+Alguns detalhes visíveis nos prints:
+
+- **Limite de integrantes:** a criação do grupo mostra `4 de 4 · sem vagas` com o aviso de capacidade
+  esgotada, e a tela de integrantes repete o contador junto da política de push em vigor.
+- **Mensagem direcionada:** no chat em grupo, a mensagem do João aparece marcada como *Para você* —
+  é uma mensagem do histórico do grupo endereçada a um integrante, como descrito no enunciado.
+- **Tempo real:** as mensagens do chat individual e do grupo chegaram sem recarregar a tela.
+- **Imagem padrão:** contas sem foto exibem a inicial do nome, o *fallback* exigido quando a foto
+  não está disponível.
 
 ---
 
@@ -595,7 +606,7 @@ Na mesma ordem do enunciado:
 - [x] Hooks obrigatórios utilizados com finalidade real
 - [x] Projeto sem `any`
 - [x] Services e componentes separados
-- [ ] README completo com prints e configuração — **faltam os prints da lista de conversas preenchida, do chat em grupo e dos integrantes**
+- [x] README completo com prints e configuração
 - [x] README com nome e RM de todos os integrantes
 - [x] Arquivo `firebaseConfig.json` presente no repositório
 - [x] `firebaseConfig.json` sem credenciais administrativas ou chaves privadas
@@ -607,5 +618,4 @@ Na mesma ordem do enunciado:
 Pendências conhecidas:
 
 - [x] Evidência de notificação recebida — `docs/screenshots/notificacao.png`
-- [ ] Prints restantes: lista de conversas preenchida, chat em grupo e integrantes do grupo
 - [ ] Push Key (APNs) — necessária apenas para o push no iOS, que exige conta Apple Developer paga e aparelho físico
