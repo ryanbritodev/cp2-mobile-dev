@@ -516,6 +516,7 @@ Cada estado exigido pelo enunciado tem tratamento explícito:
 | Permissão de notificação negada | `NotificationStatusBanner` com atalho para as configurações do sistema |
 | Dispositivo sem token | status `no-token` do [`useNotifications`](src/hooks/useNotifications.ts:49) → banner correspondente |
 | Falha de conectividade | `ConnectivityBanner` a partir do `.info/connected` do RTDB, com carência de 3s para evitar falso alarme ([`useConnectivity.ts`](src/hooks/useConnectivity.ts)) |
+| Operação que não responde | Escritas no Firestore e o envio da imagem ao Cloudinary só resolvem com confirmação do servidor; ambos têm limite de espera ([`timeout.ts`](src/utils/timeout.ts), [`storageService.ts`](src/services/storageService.ts)), para que logout e upload nunca fiquem presos |
 
 ---
 
