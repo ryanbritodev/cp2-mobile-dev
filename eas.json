@@ -4,16 +4,25 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "env": {
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "c59730b9-caa2-48cd-a37d-1f80d0e88068",
+        "EXPO_PUBLIC_API_URL": "https://chat-notifications-api.onrender.com"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "android": { "buildType": "apk" }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "android": { "buildType": "apk" }
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true
     }
   },

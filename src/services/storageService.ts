@@ -4,6 +4,9 @@ import { isRecord, readString } from '../utils/guards';
 import { requestUploadSignature, type UploadTarget } from './apiClient';
 
 const MAX_IMAGE_SIZE = 512;
+// O envio ao Cloudinary precisa de limite próprio: sem ele, uma conexão que
+// para de responder deixa a tela em carregamento indefinidamente.
+const UPLOAD_TIMEOUT_MS = 60_000;
 
 export type { UploadTarget };
 
@@ -31,20 +34,31 @@ export async function uploadImage(target: UploadTarget, localUri: string): Promi
   const base64 = await compressImage(localUri);
   const signed = await requestUploadSignature(target);
 
-  const response = await fetch(signed.uploadUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: encodeForm({
-      file: `data:image/jpeg;base64,${base64}`,
-      api_key: signed.apiKey,
-      timestamp: signed.timestamp,
-      signature: signed.signature,
-      public_id: signed.publicId,
-      overwrite: signed.overwrite,
-      invalidate: signed.invalidate,
-      allowed_formats: signed.allowedFormats,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(signed.uploadUrl, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: encodeForm({
+        file: `data:image/jpeg;base64,${base64}`,
+        api_key: signed.apiKey,
+        timestamp: signed.timestamp,
+        signature: signed.signature,
+        public_id: signed.publicId,
+        overwrite: signed.overwrite,
+        invalidate: signed.invalidate,
+        allowed_formats: signed.allowedFormats,
+      }),
+    });
+  } catch {
+    throw new AppError('Não foi possível enviar a imagem. Verifique sua conexão e tente novamente.');
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const json: unknown = await response.json().catch(() => null);
   const secureUrl = isRecord(json) ? readString(json, 'secure_url') : '';

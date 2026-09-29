@@ -5,6 +5,9 @@ import { unregisterDevice } from '../services/notificationService';
 import { subscribeOwnProfile } from '../services/userService';
 import type { ChatUser, LoginInput, RegisterInput, RegisterResult } from '../types/user';
 import { getErrorMessage } from '../utils/errors';
+import { withTimeout } from '../utils/timeout';
+
+const UNREGISTER_TIMEOUT_MS = 5_000;
 
 export type AuthStatus = 'loading' | 'unauthenticated' | 'authenticated';
 
@@ -66,8 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     if (uid) {
-      // Remove o token deste aparelho antes de encerrar a sessão (ignora falhas de rede).
-      await unregisterDevice(uid).catch(() => undefined);
+      // Remove o token deste aparelho antes de encerrar a sessão. A remoção só
+      // resolve quando o Firestore confirma, então o timeout garante que uma
+      // falha de rede não impeça o logout — o token restante é desativado pela
+      // API assim que o FCM o recusar.
+      await withTimeout(unregisterDevice(uid), UNREGISTER_TIMEOUT_MS);
     }
     await authService.logout();
   }, [uid]);
