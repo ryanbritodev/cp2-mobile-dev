@@ -18,17 +18,19 @@ Aplicativo de chat em **React Native + Expo + TypeScript** com conversas individ
 2. [Serviços Firebase e responsabilidades](#-serviços-firebase-e-responsabilidades)
 3. [Arquitetura e fluxo de uma mensagem](#-arquitetura-e-fluxo-de-uma-mensagem)
 4. [Estrutura do projeto](#-estrutura-do-projeto)
-5. [Configuração do Firebase](#-configuração-do-firebase)
-6. [Armazenamento de fotos](#-armazenamento-de-fotos)
-7. [Instalação e execução do app](#-instalação-e-execução-do-app)
-8. [Notificações no Android e iOS](#-notificações-no-android-e-ios)
-9. [API de notificações](#-api-de-notificações)
-10. [Política de notificações](#-política-de-notificações)
-11. [Limite de integrantes e concorrência](#-limite-de-integrantes-e-concorrência)
-12. [Regras de segurança](#-regras-de-segurança)
-13. [Telas](#-telas)
-14. [Evidência de notificação](#-evidência-de-notificação)
-15. [Checklist de requisitos](#-checklist-de-requisitos)
+5. [Tipagem, hooks e imutabilidade](#-tipagem-hooks-e-imutabilidade)
+6. [Configuração do Firebase](#-configuração-do-firebase)
+7. [Armazenamento de fotos](#-armazenamento-de-fotos)
+8. [Instalação e execução do app](#-instalação-e-execução-do-app)
+9. [Notificações no Android e iOS](#-notificações-no-android-e-ios)
+10. [API de notificações](#-api-de-notificações)
+11. [Política de notificações](#-política-de-notificações)
+12. [Limite de integrantes e concorrência](#-limite-de-integrantes-e-concorrência)
+13. [Regras de segurança](#-regras-de-segurança)
+14. [Estados tratados na interface](#-estados-tratados-na-interface)
+15. [Telas](#-telas)
+16. [Evidência de notificação](#-evidência-de-notificação)
+17. [Checklist de requisitos](#-checklist-de-requisitos)
 
 ---
 
@@ -153,6 +155,38 @@ FCM (Android) / Expo Push (iOS) notificam somente os destinatários permitidos
     └── test/recipientResolver.test.ts, cloudinary.test.ts
 rules-tests/                          # Testes das regras nos emuladores do Firebase
 ```
+
+---
+
+## 🔷 Tipagem, hooks e imutabilidade
+
+**TypeScript strict, sem `any`.** `strict: true` no app e na API; não há nenhuma ocorrência de `any`, `as any` ou `<any>` em `src/` ou `server/src/`. Os tipos pedidos no enunciado existem com a mesma forma:
+
+| Tipo | Arquivo |
+|---|---|
+| `ChatUser`, `PublicProfile`, `RegisterInput`, `LoginInput` | [`src/types/user.ts`](src/types/user.ts) |
+| `DirectConversation`, `ChatMessage`, `MessageTarget`, `ConversationSummary` | [`src/types/chat.ts`](src/types/chat.ts) |
+| `ChatGroup`, `CreateGroupInput`, `UpdateGroupInput` | [`src/types/group.ts`](src/types/group.ts) |
+| `NotificationPolicy`, `NotificationSettings`, `DeviceRegistration`, `PushPayloadData` | [`src/types/notification.ts`](src/types/notification.ts) |
+| `RootStackParamList` — parâmetros de navegação tipados | [`src/types/navigation.ts`](src/types/navigation.ts) |
+| Tipos do domínio da API | [`server/src/types/domain.ts`](server/src/types/domain.ts) |
+
+Leituras e escritas no Firebase passam por conversores tipados (`withConverter` em [`src/services/converters.ts`](src/services/converters.ts)) e por type guards ([`src/utils/guards.ts`](src/utils/guards.ts)) — nada de cast para contornar tipos do Firebase ou da navegação.
+
+> **Onde fica a política de notificação:** em `groups/{groupId}.notificationPolicy`, e não em uma coleção separada. `NotificationSettings` é a configuração **efetiva** da conversa, que a API deriva desse documento ([`server/src/types/domain.ts`](server/src/types/domain.ts)) para decidir os destinatários. O enunciado permite estrutura própria desde que documentada.
+
+**Hooks, com finalidade real:**
+
+| Hook | Uso |
+|---|---|
+| `useState` | formulários, estados de envio, status de registro de push, seleção de integrantes |
+| `useEffect` | assinaturas do Realtime Database e do Firestore, **sempre com remoção no cleanup**; reação à volta do app do segundo plano ([`useNotifications.ts:76`](src/hooks/useNotifications.ts:76)) |
+| `useMemo` | derivação de estado: lista de conversas ordenada por horário ([`useConversations.ts:63`](src/hooks/useConversations.ts:63)), chaves estáveis de dependência, mescla de mensagens persistidas e pendentes ([`useChat.ts:150`](src/hooks/useChat.ts:150)) |
+| `useCallback` | handlers estáveis passados a componentes e usados como dependência de efeitos, como o registro de push ([`useNotifications.ts:39`](src/hooks/useNotifications.ts:39)) |
+
+Hooks personalizados: `useAuth`, `useChat`, `useGroups`, `useConversations`, `useNotifications`, `useUsers`, `useProfile`, `usePublicProfiles`, `usePreferences`, `useConnectivity`.
+
+**Imutabilidade:** o estado nunca é mutado no lugar — ordenações e concatenações são feitas sobre cópias (`[...lista].sort(...)`) e atualizações usam retorno de novo objeto/array. Estados derivados vêm de `useMemo`, não de cópias manuais mantidas em paralelo.
 
 ---
 
@@ -465,6 +499,26 @@ npm test
 
 ---
 
+## ⏳ Estados tratados na interface
+
+Cada estado exigido pelo enunciado tem tratamento explícito:
+
+| Estado | Onde e como |
+|---|---|
+| Loading | `Loading` em toda tela com busca assíncrona; botões com estado "enviando" |
+| Erro | `ErrorMessage`/`Banner` com mensagem traduzida por [`utils/errors.ts`](src/utils/errors.ts) — sem expor detalhes internos |
+| Usuário não autenticado | `AuthContext` + `RootNavigator`: só o fluxo Login/Cadastro é montado |
+| Nenhuma conversa | `EmptyState` na tela de Conversas ([`ConversationsScreen.tsx:71`](src/screens/ConversationsScreen.tsx:71)) |
+| Nenhum usuário disponível | `EmptyState` na tela de Usuários ([`UsersScreen.tsx:123`](src/screens/UsersScreen.tsx:123)) |
+| Grupo sem vagas | aviso no formulário ([`GroupFormScreen.tsx:172`](src/screens/GroupFormScreen.tsx:172)), banner e alerta na seleção de integrantes ([`UsersScreen.tsx:57`](src/screens/UsersScreen.tsx:57)) |
+| Conversa sem mensagens | `EmptyState` no chat ([`ChatScreen.tsx:157`](src/screens/ChatScreen.tsx:157)) |
+| Falha no envio da mensagem | bolha marcada como falha com ação **Reenviar** ([`ChatMessage.tsx:48`](src/components/ChatMessage.tsx:48)) |
+| Permissão de notificação negada | `NotificationStatusBanner` com atalho para as configurações do sistema |
+| Dispositivo sem token | status `no-token` do [`useNotifications`](src/hooks/useNotifications.ts:49) → banner correspondente |
+| Falha de conectividade | `ConnectivityBanner` a partir do `.info/connected` do RTDB, com carência de 3s para evitar falso alarme ([`useConnectivity.ts`](src/hooks/useConnectivity.ts)) |
+
+---
+
 ## 🖥️ Telas
 
 | Tela | Principais recursos |
@@ -498,25 +552,52 @@ Prints (salvar em `docs/screenshots/`):
 
 ## ✅ Checklist de requisitos
 
-- [x] React Native, Expo SDK 57 e TypeScript (strict, sem `any`)
-- [x] Cadastro e login apenas com e-mail/senha; recuperação de sessão e logout
+Na mesma ordem do enunciado:
+
+- [x] React Native, Expo SDK 55+ e TypeScript — **SDK 57**, `strict`
+- [x] Cadastro e login apenas com e-mail/senha
 - [x] Cadastro com nome, celular, data de nascimento e foto de perfil
-- [x] Conversas individuais com exatamente dois participantes, ID único por par
-- [x] Perfil acessível pela foto do participante e pela lista de integrantes
-- [x] Criação e edição de grupos, foto do grupo, proprietário e integrantes por `uid`
-- [x] Limite configurável protegido por regras + transações (concorrência)
-- [x] Mensagens no Realtime Database com listeners em tempo real
-- [x] Perfis, grupos, tokens e preferências no Firestore
-- [x] Imagens no Cloudinary (upload assinado pela API), apenas URLs no Firestore
-- [x] FCM configurado; tokens privados; tokens inválidos desativados
-- [x] API própria autenticada com Firebase ID Token, sem Cloud Functions
-- [x] Políticas `all_group_messages`, `mentioned_members`, `direct_messages_only` e `disabled`
-- [x] Remetente excluído; toque na notificação abre a conversa
-- [x] Proteção contra chamadas duplicadas
-- [x] Regras de segurança do Firestore e do Realtime Database versionadas e testadas nos emuladores
+- [x] Logout e recuperação de sessão
+- [x] Conversas individuais com exatamente dois participantes
+- [x] Perfil acessível pela foto do participante
+- [x] Criação e edição de grupos
+- [x] Foto do grupo e listagem de seus integrantes
+- [x] Perfil acessível pela lista de integrantes do grupo
+- [x] Proprietário e integrantes identificados por `uid`
+- [x] Limite configurável de integrantes
+- [x] Proteção contra estouro do limite em ações concorrentes — regras + transações, com teste de duas adições simultâneas
+- [x] Mensagens no Realtime Database
+- [x] Perfis, grupos e configurações no Firestore
+- [x] Imagens em serviço apropriado (Cloudinary) e apenas suas URLs salvas no Firestore
+- [x] Atualização de mensagens em tempo real
+- [x] Firebase Cloud Messaging configurado
+- [x] Tokens de dispositivos armazenados com segurança — `users/{uid}/devices`, privados por regra
+- [x] API online autenticada com Firebase ID Token
+- [x] API publicada em URL pública com HTTPS — https://chat-notifications-api.onrender.com
+- [x] API funciona sem servidor local ou inicialização pelo professor
+- [x] Push enviado pela API, sem utilização de Cloud Functions
+- [x] Política `all_group_messages`
+- [x] Política `mentioned_members`
+- [x] Política `direct_messages_only`
+- [x] Política `disabled`
+- [x] Remetente excluído dos destinatários do próprio push
+- [x] Toque na notificação abre a conversa correta
+- [x] Regras de segurança do Firestore e Realtime Database — versionadas e com 26 testes nos emuladores
 - [x] Loading, estados vazios e tratamento de erros
-- [x] `firebaseConfig.json` e `.env.example` (app e API) sem segredos
-- [x] `firebaseConfig.json` preenchido com o projeto real (`chat-firebase-cp2`)
-- [x] API publicada e funcionando: https://chat-notifications-api.onrender.com
-- [ ] **Adicionar** prints e evidência de notificação
-- [x] Nome e RM dos integrantes
+- [x] Hooks obrigatórios utilizados com finalidade real
+- [x] Projeto sem `any`
+- [x] Services e componentes separados
+- [ ] README completo com prints e configuração — **faltam os prints das telas**
+- [x] README com nome e RM de todos os integrantes
+- [x] Arquivo `firebaseConfig.json` presente no repositório
+- [x] `firebaseConfig.json` sem credenciais administrativas ou chaves privadas
+- [x] Arquivos `.env.example` presentes e sem segredos reais (app e API)
+- [x] Credencial administrativa fora do aplicativo e do GitHub
+- [x] Segredos administrativos configurados somente na hospedagem da API
+- [x] Repositório acessível no GitHub
+
+Pendências conhecidas:
+
+- [ ] Prints das telas em `docs/screenshots/`
+- [ ] Evidência de notificação recebida
+- [ ] `EXPO_PUBLIC_EAS_PROJECT_ID` e Push Key (APNs) — necessários apenas para o push no iOS, que exige conta Apple Developer paga e aparelho físico
