@@ -59,19 +59,27 @@ export async function requestPermission(): Promise<PermissionState> {
  * Obtém o token de push do dispositivo:
  * - Android: token nativo do Firebase Cloud Messaging (enviado pela API com o Admin SDK);
  * - iOS: token do Expo Push Service (que entrega via APNs).
- * Retorna `null` em emuladores/simuladores, que não possuem token.
+ * Retorna `null` quando o ambiente não possui token, e a interface exibe o aviso
+ * correspondente: emulador Android sem Google Play Services e simulador iOS.
  */
 export async function getPushToken(): Promise<PushToken | null> {
-  if (!Device.isDevice) return null;
   await ensureAndroidChannel();
 
   if (Platform.OS === 'android') {
-    const deviceToken = await Notifications.getDevicePushTokenAsync();
-    return typeof deviceToken.data === 'string'
-      ? { token: deviceToken.data, provider: 'fcm', platform: 'android' }
-      : null;
+    // Aparelhos e emuladores com Google Play Services registram no FCM normalmente;
+    // sem Play Services o registro falha e o app trata como "dispositivo sem token".
+    try {
+      const deviceToken = await Notifications.getDevicePushTokenAsync();
+      return typeof deviceToken.data === 'string' && deviceToken.data
+        ? { token: deviceToken.data, provider: 'fcm', platform: 'android' }
+        : null;
+    } catch {
+      return null;
+    }
   }
   if (Platform.OS === 'ios') {
+    // O simulador do iOS não recebe push remoto: não há APNs para gerar o token.
+    if (!Device.isDevice) return null;
     if (!env.easProjectId) throw new AppError('EXPO_PUBLIC_EAS_PROJECT_ID não configurado.');
     const expoToken = await Notifications.getExpoPushTokenAsync({ projectId: env.easProjectId });
     return { token: expoToken.data, provider: 'expo', platform: 'ios' };

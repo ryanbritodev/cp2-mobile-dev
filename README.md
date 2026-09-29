@@ -264,7 +264,7 @@ npm run api:test
 
 1. `google-services.json` na raiz (o `app.config.ts` o inclui automaticamente quando o arquivo existe).
 2. O app cria o canal `messages` (importância alta) e solicita a permissão `POST_NOTIFICATIONS` (Android 13+).
-3. O token obtido com `getDevicePushTokenAsync()` é o **token nativo do FCM**, salvo em `users/{uid}/devices/{deviceId}` com `provider: "fcm"`.
+3. O token obtido com `getDevicePushTokenAsync()` é o **token nativo do FCM**, salvo em `users/{uid}/devices/{deviceId}` com `provider: "fcm"`. Funciona em aparelho físico e também em **emulador com imagem Google Play Services** (`google_apis_playstore`), que registra no FCM e recebe push de verdade; sem Play Services o registro falha e o app mostra o aviso de dispositivo sem token.
 4. A API envia diretamente pelo **Firebase Cloud Messaging** com o Admin SDK (`messaging.sendEach`), com `notification` + `data` (`conversationId`, `conversationType`), prioridade alta e canal `messages`. Assim a notificação é exibida com o app em segundo plano ou fechado.
 
 ### iOS (APNs via Expo Push Service)
@@ -279,7 +279,7 @@ npm run api:test
 ### Comportamento no app
 
 - Permissão negada → banner "Notificações desativadas" com botão para abrir as configurações; ao voltar ao app o registro é refeito.
-- Emulador/simulador sem token → banner "dispositivo sem token".
+- Ambiente sem token (emulador Android sem Google Play Services, simulador iOS) → banner "dispositivo sem token".
 - Token renovado pelo sistema → documento do dispositivo atualizado (`addPushTokenListener`).
 - Logout → o documento do dispositivo é **removido** antes do `signOut`, para o usuário anterior não receber pushes naquele aparelho.
 - Toque na notificação (app aberto, em segundo plano ou fechado) → abre a conversa do payload.
