@@ -3,7 +3,10 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ExpoConfig } from 'expo/config';
 
-const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+// Public EAS project id. It is not a secret: it identifies the project for EAS
+// Build and for the Expo Push Service token used on iOS. The environment can
+// override it so other teams may build the project under their own account.
+const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? 'c59730b9-caa2-48cd-a37d-1f80d0e88068';
 const androidPackage = process.env.APP_ANDROID_PACKAGE ?? 'br.com.fiap.chatfirebase';
 const iosBundleIdentifier = process.env.APP_IOS_BUNDLE_ID ?? 'br.com.fiap.chatfirebase';
 

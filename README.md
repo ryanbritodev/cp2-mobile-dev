@@ -259,7 +259,7 @@ Edite o `.env`:
 | Variável | Descrição |
 |---|---|
 | `EXPO_PUBLIC_API_URL` | URL pública HTTPS da API (ex.: `https://chat-notifications-api.onrender.com`) |
-| `EXPO_PUBLIC_EAS_PROJECT_ID` | ID do projeto EAS (`npx eas-cli@latest init`) — necessário para o token Expo no iOS |
+| `EXPO_PUBLIC_EAS_PROJECT_ID` | ID do projeto EAS — já preenchido em `app.config.ts` e em `eas.json`; defina a variável apenas para compilar o projeto sob outra conta EAS (`npx eas-cli@latest init`) |
 | `APP_ANDROID_PACKAGE` / `APP_IOS_BUNDLE_ID` | Opcional; devem coincidir com os apps cadastrados no Firebase |
 
 Gerar e instalar o **development build** (necessário para push):
@@ -532,15 +532,22 @@ Cada estado exigido pelo enunciado tem tratamento explícito:
 | Integrantes | foto e dados do grupo, lista de integrantes (toque → perfil) |
 | Perfil | foto, nome, e-mail, celular, nascimento, "Não informado" para campos vazios; no próprio perfil: status/controle das notificações e logout |
 
-Prints (salvar em `docs/screenshots/`):
+Prints em `docs/screenshots/`, capturados em aparelho Android com o development build:
 
-| Login | Cadastro | Conversas | Chat em grupo |
-|---|---|---|---|
-| ![](docs/screenshots/login.png) | ![](docs/screenshots/cadastro.png) | ![](docs/screenshots/conversas.png) | ![](docs/screenshots/chat-grupo.png) |
+| Login | Cadastro | Usuários |
+|---|---|---|
+| ![](docs/screenshots/login.png) | ![](docs/screenshots/cadastro.png) | ![](docs/screenshots/usuarios.png) |
 
-| Usuários | Grupo | Integrantes | Perfil |
-|---|---|---|---|
-| ![](docs/screenshots/usuarios.png) | ![](docs/screenshots/grupo.png) | ![](docs/screenshots/integrantes.png) | ![](docs/screenshots/perfil.png) |
+| Grupo (limite atingido) | Perfil | Conversas (estado vazio) |
+|---|---|---|
+| ![](docs/screenshots/grupo.png) | ![](docs/screenshots/perfil.png) | ![](docs/screenshots/conversas-vazio.png) |
+
+| Chat individual em tempo real |
+|---|
+| ![](docs/screenshots/chat-direto.png) |
+
+O print do grupo mostra o contador em **"4 de 4 · sem vagas"** com o aviso de capacidade esgotada;
+o do chat individual mostra a mensagem recebida sem recarregar a tela.
 
 ---
 
@@ -587,7 +594,7 @@ Na mesma ordem do enunciado:
 - [x] Hooks obrigatórios utilizados com finalidade real
 - [x] Projeto sem `any`
 - [x] Services e componentes separados
-- [ ] README completo com prints e configuração — **faltam os prints das telas**
+- [ ] README completo com prints e configuração — **faltam os prints da lista de conversas preenchida, do chat em grupo e dos integrantes**
 - [x] README com nome e RM de todos os integrantes
 - [x] Arquivo `firebaseConfig.json` presente no repositório
 - [x] `firebaseConfig.json` sem credenciais administrativas ou chaves privadas
@@ -598,6 +605,6 @@ Na mesma ordem do enunciado:
 
 Pendências conhecidas:
 
-- [ ] Prints das telas em `docs/screenshots/`
-- [ ] Evidência de notificação recebida
-- [ ] `EXPO_PUBLIC_EAS_PROJECT_ID` e Push Key (APNs) — necessários apenas para o push no iOS, que exige conta Apple Developer paga e aparelho físico
+- [x] Evidência de notificação recebida — `docs/screenshots/notificacao.png`
+- [ ] Prints restantes: lista de conversas preenchida, chat em grupo e integrantes do grupo
+- [ ] Push Key (APNs) — necessária apenas para o push no iOS, que exige conta Apple Developer paga e aparelho físico
