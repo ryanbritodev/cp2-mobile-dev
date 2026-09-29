@@ -291,8 +291,8 @@ npm run api:test
 
 - **Tecnologia:** Node.js 22 + Express 5 + TypeScript + Firebase Admin SDK.
 - **Hospedagem:** Render (Web Service, HTTPS automático) — blueprint em [`render.yaml`](render.yaml). Há também um [`Dockerfile`](server/Dockerfile) para Railway/Fly.io/Cloud Run.
-- **URL pública:** `https://SEU-SERVICO.onrender.com` ← **substituir pela URL publicada**
-- **Health check:** `GET https://SEU-SERVICO.onrender.com/health`
+- **URL pública:** https://chat-notifications-api.onrender.com
+- **Health check:** `GET https://chat-notifications-api.onrender.com/health` — verificado em 28/09/2026, respondendo `{"status":"ok","firebase":"configured","imageStorage":"configured"}`
 
 ### Endpoints
 
@@ -383,7 +383,7 @@ npm test
 4. Após o deploy, verifique:
 
 ```bash
-curl https://SEU-SERVICO.onrender.com/health
+curl https://chat-notifications-api.onrender.com/health
 ```
 
 5. Configure a URL em `EXPO_PUBLIC_API_URL` e gere um novo build do app.
@@ -517,6 +517,6 @@ Prints (salvar em `docs/screenshots/`):
 - [x] Loading, estados vazios e tratamento de erros
 - [x] `firebaseConfig.json` e `.env.example` (app e API) sem segredos
 - [x] `firebaseConfig.json` preenchido com o projeto real (`chat-firebase-cp2`)
-- [ ] **Publicar** a API e informar a URL acima
+- [x] API publicada e funcionando: https://chat-notifications-api.onrender.com
 - [ ] **Adicionar** prints e evidência de notificação
 - [x] Nome e RM dos integrantes
