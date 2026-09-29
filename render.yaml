@@ -1,0 +1,31 @@
+# Blueprint do Render (https://render.com) para publicar a API com HTTPS.
+# As variáveis marcadas com `sync: false` são secretas e devem ser preenchidas
+# no painel do Render — nunca no repositório.
+services:
+  - type: web
+    name: chat-notifications-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_DATABASE_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: EXPO_ACCESS_TOKEN
+        sync: false

@@ -1,0 +1,32 @@
+export const colors = {
+  primary: '#2563EB',
+  primaryDark: '#1D4ED8',
+  primarySoft: '#DBEAFE',
+  background: '#F1F5F9',
+  surface: '#FFFFFF',
+  text: '#0F172A',
+  textMuted: '#64748B',
+  textOnPrimary: '#FFFFFF',
+  border: '#E2E8F0',
+  danger: '#DC2626',
+  dangerSoft: '#FEE2E2',
+  warning: '#92400E',
+  warningSoft: '#FEF3C7',
+  success: '#15803D',
+  successSoft: '#DCFCE7',
+  group: '#7C3AED',
+  groupSoft: '#EDE9FE',
+  direct: '#0E7490',
+  directSoft: '#CFFAFE',
+  bubbleOwn: '#2563EB',
+  bubbleOther: '#FFFFFF',
+  mention: '#FDE68A',
+} as const;
+
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+} as const;

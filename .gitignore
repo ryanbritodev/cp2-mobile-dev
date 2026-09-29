@@ -30,12 +30,26 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (mantenha apenas os .env.example versionados)
+.env
 .env*.local
+server/.env
+
+# Credenciais administrativas — NUNCA versionar
+serviceAccountKey.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+firebaseAdminCredentials.json
 
 # typescript
 *.tsbuildinfo
 
+# API build
+server/dist/
+
 # generated native folders
 /ios
 /android
+
+# Firebase emulators
+*-debug.log

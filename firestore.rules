@@ -1,0 +1,192 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------
+    // Funções auxiliares
+    // ------------------------------------------------------------------
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isText(value, minSize, maxSize) {
+      return value is string && value.size() >= minSize && value.size() <= maxSize;
+    }
+
+    // ID determinístico da conversa individual: uids ordenados unidos por "_".
+    function directIdFor(a, b) {
+      return a < b ? a + '_' + b : b + '_' + a;
+    }
+
+    function sharesDirectConversation(otherUid) {
+      return exists(/databases/$(database)/documents/directConversations/$(directIdFor(request.auth.uid, otherUid)));
+    }
+
+    // Fotos: apenas a URL HTTPS final do Cloudinary (ou vazio). Bloqueia Base64 nos bancos.
+    function isPhotoUrl(value) {
+      return value is string
+        && (value == '' || (value.size() <= 2048 && value.matches('^https://res[.]cloudinary[.]com/.+')));
+    }
+
+    function isValidPolicy(policy) {
+      return policy in ['all_group_messages', 'mentioned_members', 'direct_messages_only', 'disabled'];
+    }
+
+    // ------------------------------------------------------------------
+    // Perfis completos (dados cadastrais)
+    // Leitura: o próprio usuário ou quem tem conversa individual com ele.
+    // Integrantes de grupos em comum consultam o perfil pela API, que valida o vínculo.
+    // ------------------------------------------------------------------
+    match /users/{uid} {
+      allow read: if isSelf(uid) || (signedIn() && sharesDirectConversation(uid));
+
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'phoneNumber', 'birthDate', 'photoUrl', 'createdAt'])
+        && isText(request.resource.data.name, 1, 80)
+        && request.resource.data.email == request.auth.token.email
+        && isText(request.resource.data.phoneNumber, 0, 30)
+        && isText(request.resource.data.birthDate, 0, 10)
+        && isPhotoUrl(request.resource.data.photoUrl)
+        && request.resource.data.createdAt is number;
+
+      allow update: if isSelf(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phoneNumber', 'birthDate', 'photoUrl'])
+        && isText(request.resource.data.name, 1, 80)
+        && isText(request.resource.data.phoneNumber, 0, 30)
+        && isText(request.resource.data.birthDate, 0, 10)
+        && isPhotoUrl(request.resource.data.photoUrl);
+
+      allow delete: if false;
+
+      // Tokens de push: privados — somente o dono (e a API via Admin SDK).
+      match /devices/{deviceId} {
+        allow read, delete: if isSelf(uid);
+        allow create, update: if isSelf(uid)
+          && request.resource.data.keys().hasOnly(['token', 'provider', 'platform', 'enabled', 'updatedAt'])
+          && isText(request.resource.data.token, 1, 4096)
+          && request.resource.data.provider in ['fcm', 'expo']
+          && request.resource.data.platform in ['android', 'ios']
+          && request.resource.data.enabled is bool
+          && request.resource.data.updatedAt is number;
+      }
+
+      // Preferências de notificação: privadas.
+      match /preferences/{preferenceId} {
+        allow read: if isSelf(uid);
+        allow create, update: if isSelf(uid)
+          && preferenceId == 'notifications'
+          && request.resource.data.keys().hasOnly(['pushEnabled', 'mutedConversationIds', 'updatedAt'])
+          && (!('pushEnabled' in request.resource.data) || request.resource.data.pushEnabled is bool)
+          && (!('mutedConversationIds' in request.resource.data)
+              || (request.resource.data.mutedConversationIds is list && request.resource.data.mutedConversationIds.size() <= 500))
+          && request.resource.data.updatedAt is number;
+        allow delete: if false;
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // Perfis públicos: apenas nome e foto, usados na busca de usuários.
+    // ------------------------------------------------------------------
+    match /publicProfiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['name', 'nameLower', 'photoUrl', 'updatedAt'])
+        && isText(request.resource.data.name, 1, 80)
+        && request.resource.data.nameLower == request.resource.data.name.lower()
+        && isPhotoUrl(request.resource.data.photoUrl)
+        && request.resource.data.updatedAt is number;
+      allow delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Grupos
+    // O limite de integrantes é validado sobre o documento FINAL da escrita
+    // (request.resource). Como o Firestore serializa escritas no mesmo documento
+    // e as transações do app são refeitas em caso de conflito, requisições
+    // concorrentes nunca produzem memberIds.size() > memberLimit.
+    // ------------------------------------------------------------------
+    match /groups/{groupId} {
+      function next() {
+        return request.resource.data;
+      }
+
+      function hasValidShape() {
+        return next().keys().hasOnly(['name', 'photoUrl', 'ownerId', 'memberIds', 'memberLimit', 'notificationPolicy', 'createdAt', 'updatedAt'])
+          && isText(next().name, 1, 60)
+          && isPhotoUrl(next().photoUrl)
+          && next().memberIds is list
+          && next().memberLimit is int
+          && next().memberLimit >= 2
+          && next().memberLimit <= 256
+          && next().memberIds.size() <= next().memberLimit
+          && next().memberIds.toSet().size() == next().memberIds.size()
+          && next().ownerId in next().memberIds
+          && isValidPolicy(next().notificationPolicy)
+          && next().createdAt is number
+          && next().updatedAt is number;
+      }
+
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+
+      allow create: if signedIn()
+        && next().ownerId == request.auth.uid
+        && hasValidShape()
+        && next().memberIds.size() >= 2;
+
+      allow update: if signedIn()
+        && hasValidShape()
+        && next().ownerId == resource.data.ownerId
+        && next().createdAt == resource.data.createdAt
+        && (
+          // Proprietário: gerencia nome, foto, integrantes, limite e política.
+          (request.auth.uid == resource.data.ownerId && next().memberIds.size() >= 2)
+          ||
+          // Integrante comum: pode apenas sair do grupo (remover a si mesmo).
+          (request.auth.uid != resource.data.ownerId
+            && request.auth.uid in resource.data.memberIds
+            && next().diff(resource.data).affectedKeys().hasOnly(['memberIds', 'updatedAt'])
+            && next().memberIds.toSet() == resource.data.memberIds.toSet().difference([request.auth.uid].toSet()))
+        );
+
+      allow delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Conversas individuais: exatamente dois participantes distintos,
+    // ID = uids ordenados; não é possível conversar consigo mesmo.
+    // ------------------------------------------------------------------
+    match /directConversations/{conversationId} {
+      function idContainsCaller() {
+        return signedIn() && request.auth.uid in conversationId.split('_');
+      }
+
+      allow get: if idContainsCaller() && (resource == null || request.auth.uid in resource.data.participantIds);
+      allow list: if signedIn() && request.auth.uid in resource.data.participantIds;
+
+      allow create: if idContainsCaller()
+        && request.resource.data.keys().hasOnly(['participantIds', 'createdAt'])
+        && request.resource.data.participantIds is list
+        && request.resource.data.participantIds.size() == 2
+        && request.resource.data.participantIds[0] < request.resource.data.participantIds[1]
+        && conversationId == request.resource.data.participantIds[0] + '_' + request.resource.data.participantIds[1]
+        && request.auth.uid in request.resource.data.participantIds
+        && exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.participantIds[0]))
+        && exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.participantIds[1]))
+        && request.resource.data.createdAt is number;
+
+      allow update, delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Controle de idempotência dos pushes: exclusivo da API (Admin SDK).
+    // ------------------------------------------------------------------
+    match /notificationDispatches/{dispatchId} {
+      allow read, write: if false;
+    }
+  }
+}

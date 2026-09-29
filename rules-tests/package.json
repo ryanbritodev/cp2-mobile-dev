@@ -1,0 +1,14 @@
+{
+  "name": "chat-firebase-rules-tests",
+  "private": true,
+  "description": "Testes das regras do Firestore e do Realtime Database executados nos emuladores do Firebase.",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore,database --project demo-chat-rules \"tsx --test *.test.ts\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.32.0",
+    "tsx": "^4.23.15"
+  }
+}
